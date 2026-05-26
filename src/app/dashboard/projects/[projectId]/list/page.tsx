@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { Suspense, useState, useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { issuePath, resolveProjectFromParam } from "@/lib/projects/route";
 import { useAppStore } from "@/store/app-store";
@@ -19,6 +19,14 @@ import type { Issue } from "@/types";
 import Link from "next/link";
 
 export default function ListPage() {
+  return (
+    <Suspense fallback={<div className="h-[calc(100vh-56px)] bg-background" />}>
+      <ListPageContent />
+    </Suspense>
+  );
+}
+
+function ListPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const { openNewIssue } = useAppStore();
