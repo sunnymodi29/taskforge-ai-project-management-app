@@ -1,0 +1,149 @@
+import { prisma } from "@/lib/db";
+import type { OrganizationRole, ProjectRole } from "@/generated/prisma/client";
+
+export async function getOrganizationMembership(
+  userId: string,
+  organizationId: string
+) {
+  return prisma.organizationMember.findUnique({
+    where: { userId_organizationId: { userId, organizationId } },
+  });
+}
+
+export async function getProjectMembership(userId: string, projectId: string) {
+  return prisma.projectMember.findUnique({
+    where: { userId_projectId: { userId, projectId } },
+  });
+}
+
+export async function requireOrganizationMember(
+  userId: string,
+  organizationId: string
+) {
+  const org = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { ownerId: true },
+  });
+  if (!org) throw new Error("NOT_FOUND: Organization not found");
+
+  const member = await getOrganizationMembership(userId, organizationId);
+  if (!member && org.ownerId !== userId) {
+    throw new Error("FORBIDDEN: Not an organization member");
+  }
+
+  return {
+    organization: org,
+    member,
+    isOwner: org.ownerId === userId,
+    orgRole: member?.role ?? (org.ownerId === userId ? "owner" : null),
+  };
+}
+
+export async function requireProjectAccess(userId: string, projectId: string) {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { organizationId: true, organization: { select: { ownerId: true } } },
+  });
+  if (!project) throw new Error("NOT_FOUND: Project not found");
+
+  const orgCtx = await requireOrganizationMember(userId, project.organizationId);
+  const projectMember = await getProjectMembership(userId, projectId);
+
+  const isOrgOwner = orgCtx.isOwner;
+  const isOrgProjectAdmin = orgCtx.member?.role === "project_admin";
+
+  if (!isOrgOwner && !isOrgProjectAdmin && !projectMember) {
+    throw new Error("FORBIDDEN: No access to this project");
+  }
+
+  return {
+    project,
+    organizationId: project.organizationId,
+    orgMember: orgCtx.member,
+    isOrgOwner,
+    isOrgProjectAdmin,
+    projectMember,
+  };
+}
+
+export function isOrgOwner(
+  userId: string,
+  organization: { ownerId: string }
+): boolean {
+  return organization.ownerId === userId;
+}
+
+export function canCreateProject(
+  userId: string,
+  organization: { ownerId: string },
+  orgMember: { role: OrganizationRole } | null
+): boolean {
+  if (isOrgOwner(userId, organization)) return true;
+  return orgMember?.role === "project_admin";
+}
+
+export function canManageProject(
+  userId: string,
+  organization: { ownerId: string },
+  orgMember: { role: OrganizationRole } | null,
+  projectMember: { role: ProjectRole } | null
+): boolean {
+  if (isOrgOwner(userId, organization)) return true;
+  if (orgMember?.role === "project_admin") return true;
+  return projectMember?.role === "project_admin";
+}
+
+export function canInviteToProject(
+  userId: string,
+  organization: { ownerId: string },
+  orgMember: { role: OrganizationRole } | null,
+  projectMember: { role: ProjectRole } | null
+): boolean {
+  return canManageProject(userId, organization, orgMember, projectMember);
+}
+
+export function canManageIssues(
+  projectMember: { role: ProjectRole } | null,
+  opts: {
+    userId: string;
+    organization: { ownerId: string };
+    orgMember: { role: OrganizationRole } | null;
+  }
+): boolean {
+  if (isOrgOwner(opts.userId, opts.organization)) return true;
+  if (opts.orgMember?.role === "project_admin") return true;
+  if (!projectMember) return false;
+  return (
+    projectMember.role === "project_admin" || projectMember.role === "member"
+  );
+}
+
+export async function getAccessibleProjectIds(
+  userId: string,
+  organizationId: string
+): Promise<string[] | "all"> {
+  const org = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { ownerId: true },
+  });
+  if (!org) return [];
+
+  if (org.ownerId === userId) {
+    const all = await prisma.project.findMany({
+      where: { organizationId },
+      select: { id: true },
+    });
+    return "all";
+  }
+
+  const orgMember = await getOrganizationMembership(userId, organizationId);
+  if (orgMember?.role === "project_admin") {
+    return "all";
+  }
+
+  const memberships = await prisma.projectMember.findMany({
+    where: { userId, project: { organizationId } },
+    select: { projectId: true },
+  });
+  return memberships.map((m) => m.projectId);
+}

@@ -1,0 +1,90 @@
+import NextAuth from "next-auth";
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
+import authConfig from "@/auth.config";
+import { prisma } from "@/lib/db";
+import { verifyPassword } from "@/lib/auth/password";
+import { z } from "zod";
+
+const credentialsSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+  adapter: PrismaAdapter(prisma),
+  // Credentials provider requires JWT sessions (Auth.js limitation)
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
+  providers: [
+    ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
+      ? [
+          Google({
+            clientId: process.env.AUTH_GOOGLE_ID,
+            clientSecret: process.env.AUTH_GOOGLE_SECRET,
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
+    Credentials({
+      name: "credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        const parsed = credentialsSchema.safeParse(credentials);
+        if (!parsed.success) return null;
+
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: parsed.data.email.toLowerCase() },
+          });
+
+          if (!user?.passwordHash) return null;
+
+          const valid = await verifyPassword(
+            parsed.data.password,
+            user.passwordHash
+          );
+          if (!valid) return null;
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image ?? user.avatarUrl,
+          };
+        } catch (error) {
+          console.error("[auth] Database error during login:", error);
+          return null;
+        }
+      },
+    }),
+  ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user?.id) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user && token.id) {
+        session.user.id = token.id as string;
+      }
+      return session;
+    },
+  },
+  events: {
+    async createUser({ user }) {
+      if (user.email) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { email: user.email.toLowerCase() },
+        });
+      }
+    },
+  },
+});

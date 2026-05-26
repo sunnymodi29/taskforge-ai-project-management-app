@@ -1,0 +1,277 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import {
+  DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
+  type DragStartEvent, type DragEndEvent, closestCenter
+} from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useAppStore } from "@/store/app-store";
+import { useDataStore } from "@/store/data-store";
+import { updateIssueStatus } from "@/lib/actions/issues";
+import type { Issue, IssueStatus } from "@/types";
+import { StatusBadge, PriorityIcon, IssueTypeIcon, LabelChip, SeverityBadge } from "@/components/ui/issue-badges";
+import { Avatar, AvatarGroup, Tooltip } from "@/components/ui";
+import { cn } from "@/lib/utils";
+import { Plus, MoreHorizontal, MessageSquare, Paperclip, GripVertical, ExternalLink, X } from "lucide-react";
+import IssueDrawer from "@/components/issue-drawer";
+
+const COLUMNS: { id: IssueStatus; label: string; color: string }[] = [
+  { id: "backlog",      label: "Backlog",     color: "border-zinc-500/30" },
+  { id: "todo",         label: "Todo",        color: "border-zinc-400/30" },
+  { id: "in-progress",  label: "In Progress", color: "border-blue-500/30" },
+  { id: "in-review",    label: "In Review",   color: "border-purple-500/30" },
+  { id: "done",         label: "Done",        color: "border-emerald-500/30" },
+];
+
+interface BoardState { [key: string]: Issue[] }
+
+export default function BoardPage() {
+  const { currentProject, openIssue, openNewIssue } = useAppStore();
+  const router = useRouter();
+  const projectId = currentProject.id;
+  const issues = useDataStore((s) => s.issues);
+  const upsertIssue = useDataStore((s) => s.upsertIssue);
+  const sprints = useDataStore((s) => s.sprints);
+
+  const activeSprint = sprints.find(
+    (s) => s.projectId === projectId && s.status === "active"
+  );
+
+  const projectIssues = useMemo(() => {
+    const base = issues.filter((i) => i.projectId === projectId);
+    if (activeSprint) {
+      return base.filter((i) => i.sprintId === activeSprint.id);
+    }
+    return base;
+  }, [issues, projectId, activeSprint]);
+
+  const board = useMemo(
+    () =>
+      COLUMNS.reduce((acc, col) => {
+        acc[col.id] = projectIssues.filter((i) => i.status === col.id);
+        return acc;
+      }, {} as BoardState),
+    [projectIssues]
+  );
+
+  const [activeIssue, setActiveIssue] = useState<Issue | null>(null);
+  const [drawerIssueId, setDrawerIssueId] = useState<string | null>(null);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const onDragStart = ({ active }: DragStartEvent) => {
+    const issue = projectIssues.find((i) => i.id === active.id);
+    if (issue) setActiveIssue(issue);
+  };
+
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    setActiveIssue(null);
+    if (!over) return;
+
+    const draggedIssue = projectIssues.find((i) => i.id === active.id);
+    if (!draggedIssue) return;
+
+    const toCol =
+      (over.data.current?.columnId as string | undefined) ??
+      COLUMNS.find((col) => board[col.id]?.some((i) => i.id === over.id))?.id;
+
+    if (!toCol || draggedIssue.status === toCol) return;
+
+    const optimistic = {
+      ...draggedIssue,
+      status: toCol as IssueStatus,
+      updatedAt: new Date(),
+    };
+    upsertIssue(optimistic);
+
+    void updateIssueStatus(draggedIssue.id, toCol as IssueStatus).then((updated) => {
+      upsertIssue(updated);
+      router.refresh();
+    });
+  };
+
+  return (
+    <div className="h-[calc(100vh-56px)] flex flex-col">
+      {/* Board header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div>
+          <h1 className="text-lg font-bold text-foreground">Board</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {currentProject.name}
+            {activeSprint ? ` · ${activeSprint.name}` : ""}
+          </p>
+        </div>
+        <button
+          onClick={() => openNewIssue()}
+          className="flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium px-3 py-1.5 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add Issue
+        </button>
+      </div>
+
+      {/* Kanban */}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+        <div className="flex-1 overflow-x-auto">
+          <div className="flex gap-4 p-6 h-full" style={{ minWidth: `${COLUMNS.length * 300}px` }}>
+            {COLUMNS.map((col) => (
+              <KanbanColumn
+                key={col.id}
+                column={col}
+                issues={board[col.id] ?? []}
+                onAddIssue={() => openNewIssue()}
+                onOpenIssue={(issue) => setDrawerIssueId(issue.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <DragOverlay>
+          {activeIssue && <IssueCard issue={activeIssue} onOpen={() => {}} isDragging />}
+        </DragOverlay>
+      </DndContext>
+
+      {/* Issue Drawer */}
+      {drawerIssueId && (
+        <IssueDrawer issueId={drawerIssueId} onClose={() => setDrawerIssueId(null)} />
+      )}
+    </div>
+  );
+}
+
+function KanbanColumn({ column, issues, onAddIssue, onOpenIssue }: {
+  column: { id: IssueStatus; label: string; color: string };
+  issues: Issue[];
+  onAddIssue: () => void;
+  onOpenIssue: (issue: Issue) => void;
+}) {
+  return (
+    <div
+      className={cn("flex flex-col rounded-xl border bg-muted/30 w-72 shrink-0", column.color)}
+      data-column-id={column.id}
+    >
+      {/* Column header */}
+      <div className="flex items-center justify-between px-3 py-3">
+        <div className="flex items-center gap-2">
+          <StatusBadge status={column.id} />
+          <span className="text-xs font-medium text-muted-foreground bg-muted rounded-full px-2 py-0.5">
+            {issues.length}
+          </span>
+        </div>
+        <Tooltip content={`Add issue to ${column.label}`} side="top">
+          <button
+            type="button"
+            onClick={onAddIssue}
+            className="rounded p-0.5 hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+            aria-label={`Add issue to ${column.label}`}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
+      </div>
+
+      {/* Cards */}
+      <SortableContext items={issues.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2" data-column-id={column.id}>
+          {issues.map((issue) => (
+            <SortableIssueCard key={issue.id} issue={issue} onOpen={onOpenIssue} columnId={column.id} />
+          ))}
+          {issues.length === 0 && (
+            <div className="flex items-center justify-center h-20 text-xs text-muted-foreground border border-dashed border-border rounded-lg">
+              No issues
+            </div>
+          )}
+        </div>
+      </SortableContext>
+    </div>
+  );
+}
+
+function SortableIssueCard({ issue, onOpen, columnId }: { issue: Issue; onOpen: (i: Issue) => void; columnId: string }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: issue.id,
+    data: { columnId },
+  });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
+  return (
+    <div ref={setNodeRef} style={style} className={cn(isDragging && "opacity-30")}>
+      <IssueCard issue={issue} onOpen={onOpen} listeners={listeners} attributes={attributes} />
+    </div>
+  );
+}
+
+function IssueCard({ issue, onOpen, listeners, attributes, isDragging }: {
+  issue: Issue; onOpen: (i: Issue) => void;
+  listeners?: ReturnType<typeof useSortable>["listeners"];
+  attributes?: ReturnType<typeof useSortable>["attributes"];
+  isDragging?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg border border-border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group",
+        isDragging && "kanban-card-dragging"
+      )}
+      onClick={() => onOpen(issue)}
+    >
+      {/* Type + Key + Drag handle */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <IssueTypeIcon type={issue.type} />
+          <span className="text-[10px] font-mono text-muted-foreground">{issue.issueKey}</span>
+          {issue.severity && <SeverityBadge severity={issue.severity} />}
+        </div>
+        <div className="flex items-center gap-1">
+          <Tooltip content="Drag to move" side="top">
+            <div
+              {...listeners}
+              {...attributes}
+              className="cursor-grab text-muted-foreground hover:text-foreground transition-colors p-0.5"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Drag to move"
+            >
+              <GripVertical className="h-3.5 w-3.5" />
+            </div>
+          </Tooltip>
+        </div>
+      </div>
+
+      {/* Title */}
+      <p className="text-sm font-medium text-foreground mb-2 line-clamp-2 leading-snug">{issue.title}</p>
+
+      {/* Labels */}
+      {issue.labels.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {issue.labels.slice(0, 2).map((l) => <LabelChip key={l.id} name={l.name} color={l.color} />)}
+          {issue.labels.length > 2 && <span className="text-[10px] text-muted-foreground">+{issue.labels.length - 2}</span>}
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="flex items-center justify-between mt-2">
+        <PriorityIcon priority={issue.priority} />
+        <div className="flex items-center gap-2">
+          {issue.estimate && (
+            <span className="text-[10px] font-medium text-muted-foreground bg-muted rounded px-1.5 py-0.5">{issue.estimate}pt</span>
+          )}
+          {issue.comments.length > 0 && (
+            <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+              <MessageSquare className="h-3 w-3" />{issue.comments.length}
+            </span>
+          )}
+          {issue.attachments.length > 0 && (
+            <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+              <Paperclip className="h-3 w-3" />{issue.attachments.length}
+            </span>
+          )}
+          {issue.assignees.length > 0 && (
+            <AvatarGroup users={issue.assignees} max={2} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

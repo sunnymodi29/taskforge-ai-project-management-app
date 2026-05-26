@@ -1,36 +1,167 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TaskForge AI
 
-## Getting Started
+**Build Faster. Track Smarter. Ship Better.**
 
-First, run the development server:
+Enterprise-grade project management and bug tracking — inspired by Linear, ClickUp, Jira, and YouTrack — with AI-powered productivity features.
+
+## Stack
+
+| Layer | Technology |
+|-------|------------|
+| Framework | Next.js 16 (App Router), React 19, TypeScript |
+| Styling | Tailwind CSS v4, Radix UI |
+| Database | PostgreSQL (Neon) + Prisma ORM 7 |
+| Auth | Auth.js (NextAuth v5), Argon2, Google OAuth |
+| Cache / queues | Upstash Redis |
+| State | Zustand (client UI), Server Components (data) |
+
+## Architecture
+
+```
+User → Organization (company) → Team Workspaces → Projects → Issues
+```
+
+- **Sign up:** Each user gets their own **organization** and a default **General** team workspace (isolated from other signups).
+- **Teams:** Organization owners/admins can create additional team workspaces (Engineering, Marketing, etc.).
+- **Invites:** Workspace owners/admins invite colleagues by email via **Brevo**; accept at `/invite/[token]`.
+- **Assignees:** Issue assignees are limited to members of the **active team workspace**.
+
+**Workspace roles:** Owner, Admin, Member, Viewer  
+**Project roles:** Project Admin, Developer, QA, Reporter, Viewer
+
+## Quick start
+
+### 1. Prerequisites
+
+- Node.js 20+
+- Docker (for local PostgreSQL) or a [Neon](https://neon.tech) database
+
+### 2. Install
+
+```bash
+npm install
+cp .env.example .env
+```
+
+Set `BREVO_API_KEY` and `BREVO_SENDER_EMAIL` for workspace invitation emails (optional in dev — emails are skipped if unset).
+
+Generate `AUTH_SECRET`:
+
+```bash
+openssl rand -base64 32
+```
+
+### 3. Database (PostgreSQL)
+
+Set `DATABASE_URL` in `.env` (see `.env.example`).
+
+**Local PostgreSQL (Docker):**
+
+```bash
+docker compose up -d
+npm run db:migrate
+npm run db:seed
+```
+
+**Neon (production / Vercel):** Create a project, copy the connection string into `DATABASE_URL` (add `?sslmode=require` if needed), then:
+
+```bash
+npm run db:migrate
+npm run db:seed
+```
+
+### 4. Run
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) and sign in:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Email | Password |
+|-------|----------|
+| `alex@taskforge.ai` | `password123` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start dev server |
+| `npm run build` | Production build |
+| `npm run db:migrate` | Apply Prisma migrations |
+| `npm run db:seed` | Seed demo data |
+| `npm run db:reset` | Reset DB + re-seed |
+| `npm run db:studio` | Prisma Studio |
 
-To learn more about Next.js, take a look at the following resources:
+## REST API (v1)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+All routes require an authenticated session (cookie) or sign in via `/api/auth`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/bootstrap` | Workspace dashboard payload |
+| `GET` | `/api/v1/projects` | List projects |
+| `GET` | `/api/v1/projects/:id/issues` | List project issues |
+| `POST` | `/api/v1/projects/:id/issues` | Create issue |
+| `GET` | `/api/v1/issues/:id` | Get issue |
+| `PATCH` | `/api/v1/issues/:id` | Update issue |
 
-## Deploy on Vercel
+Example (after signing in in the browser, use session cookie):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+curl http://localhost:3000/api/v1/bootstrap -H "Cookie: ..."
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Project structure
+
+```
+src/
+  app/              # Routes (App Router)
+  components/       # UI components
+  lib/
+    actions/        # Server actions
+    api/            # API helpers
+    auth/           # Password, RBAC
+    queries/        # Data access
+  store/            # Zustand client state
+  types/            # TypeScript types
+prisma/
+  schema.prisma     # Database schema
+  seed.ts           # Demo data
+```
+
+## Security
+
+- Argon2 password hashing
+- Database sessions (Auth.js + Prisma adapter)
+- RBAC on server actions and API routes
+- Upstash rate limiting on `/api/v1/*` (when Redis is configured)
+- Zod validation on API inputs
+
+## Deployment (Vercel + Neon)
+
+1. Push to GitHub (do not commit `.env`, `node_modules`, `.next`, or `public/uploads`).
+2. Create a [Neon](https://neon.tech) database and copy `DATABASE_URL` (use `?sslmode=require` if required).
+3. Import the repo in [Vercel](https://vercel.com) — `vercel.json` runs `prisma migrate deploy` on build.
+4. In Vercel **Environment Variables**, set at minimum:
+   - `DATABASE_URL` — Neon connection string
+   - `AUTH_SECRET` — `openssl rand -base64 32`
+   - `AUTH_URL` — `https://your-app.vercel.app`
+   - `NEXT_PUBLIC_APP_URL` — same as `AUTH_URL`
+   - `BREVO_*` — if you send invitation emails
+5. Deploy. Optionally seed production once: `npm run db:seed` (with `DATABASE_URL` pointing at Neon).
+
+**Note:** Avatar and comment file uploads use local disk in development. On Vercel they are disabled until you add object storage (e.g. Vercel Blob).
+
+## Roadmap (from spec)
+
+- [x] Foundation — Prisma, PostgreSQL, seed data
+- [x] Auth — credentials, Google OAuth, RBAC, REST API
+- [ ] Collaboration — Pusher realtime, Resend emails
+- [ ] AI — summarization, duplicate detection (OpenAI + Embeddings)
+- [ ] SaaS — Stripe subscriptions, audit exports
+- [ ] Tests — Playwright + Vitest
+
+## License
+
+Private — TaskForge AI
