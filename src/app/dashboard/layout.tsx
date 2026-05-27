@@ -3,6 +3,8 @@ import { DashboardDataProvider } from "@/components/dashboard-data-provider";
 import { getBootstrapData } from "@/lib/queries/bootstrap";
 import type { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardLayout({

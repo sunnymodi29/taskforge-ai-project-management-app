@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
@@ -437,6 +438,36 @@ export async function getInvitationByToken(token: string) {
   return { ...invitation, expired: false as const };
 }
 
+export type AcceptInviteState = { error?: string } | null;
+
+function isRedirectError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const digest =
+    "digest" in error ? String((error as { digest: unknown }).digest) : "";
+  return digest.includes("NEXT_REDIRECT");
+}
+
+/** Form action: accept invite, set cookies, redirect to dashboard (reliable in production). */
+export async function acceptInvitationAction(
+  token: string,
+  _prev: AcceptInviteState,
+  _formData: FormData,
+): Promise<AcceptInviteState> {
+  try {
+    const { projectKey } = await acceptInvitation(token);
+    if (projectKey) {
+      redirect(`/dashboard/projects/${projectKey}/board`);
+    }
+    redirect("/dashboard");
+    return null;
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message =
+      error instanceof Error ? error.message : "Failed to accept invitation";
+    return { error: message };
+  }
+}
+
 export async function acceptInvitation(token: string): Promise<{
   organizationSlug: string;
   projectKey?: string;
@@ -537,6 +568,12 @@ export async function acceptInvitation(token: string): Promise<{
       data: { status: "accepted" },
     });
   });
+
+  if (!organizationSlug) {
+    throw new Error(
+      "Invitation could not be applied — missing organization. Contact the person who invited you.",
+    );
+  }
 
   const cookieStore = await cookies();
   cookieStore.set(ACTIVE_ORG_COOKIE, organizationSlug, orgCookieOptions());

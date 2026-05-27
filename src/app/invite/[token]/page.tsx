@@ -4,6 +4,8 @@ import { getInvitationByToken } from "@/lib/actions/invitations";
 import { Button } from "@/components/ui";
 import { AcceptInviteButton } from "@/components/accept-invite-button";
 
+export const dynamic = "force-dynamic";
+
 export default async function InvitePage({
   params,
 }: {

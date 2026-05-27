@@ -18,7 +18,11 @@ export function getRedis(): Redis | null {
 export async function cacheGet<T>(key: string): Promise<T | null> {
   const client = getRedis();
   if (!client) return null;
-  return client.get<T>(key);
+  try {
+    return await client.get<T>(key);
+  } catch {
+    return null;
+  }
 }
 
 export async function cacheSet(

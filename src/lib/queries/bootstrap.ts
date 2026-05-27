@@ -114,7 +114,12 @@ export async function getBootstrapData(
   }
 
   const cacheKey = `bootstrap:${resolvedUserId}:${org.slug}`;
-  const cached = await cacheGet<BootstrapData>(cacheKey);
+  let cached: BootstrapData | null = null;
+  try {
+    cached = await cacheGet<BootstrapData>(cacheKey);
+  } catch {
+    cached = null;
+  }
   if (cached) return cached;
 
   const currentUser = await prisma.user.findUnique({
@@ -242,15 +247,20 @@ export async function getBootstrapData(
           take: 20,
         })
       : Promise.resolve([]),
-    prisma.invitation.findMany({
-      where: {
-        OR: [
-          { organizationId: org.id, status: "pending" },
-          { projectId: { in: projectIds }, status: "pending" },
-        ],
-      },
-      include: { invitedBy: true },
-    }),
+    projectIds.length > 0
+      ? prisma.invitation.findMany({
+          where: {
+            OR: [
+              { organizationId: org.id, status: "pending" },
+              { projectId: { in: projectIds }, status: "pending" },
+            ],
+          },
+          include: { invitedBy: true },
+        })
+      : prisma.invitation.findMany({
+          where: { organizationId: org.id, status: "pending" },
+          include: { invitedBy: true },
+        }),
     projectIds.length > 0
       ? prisma.aIConversation.findMany({
           where: { projectId: { in: projectIds } },
