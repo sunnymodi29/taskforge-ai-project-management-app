@@ -1,4 +1,4 @@
-const APP_NAME = "TaskForge AI";
+const APP_NAME = "TrackEzz";
 
 const PROJECT_SECTION_LABELS: Record<string, string> = {
   board: "Board",

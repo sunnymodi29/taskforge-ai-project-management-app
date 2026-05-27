@@ -50,11 +50,11 @@ async function main() {
   await prisma.user.deleteMany();
 
   const userDefs = [
-    { id: "u1", name: "Alex Rivera", email: "alex@taskforge.ai", seed: "Alex", createdAt: new Date("2024-01-01") },
-    { id: "u2", name: "Jordan Kim", email: "jordan@taskforge.ai", seed: "Jordan", createdAt: new Date("2024-01-05") },
-    { id: "u3", name: "Sam Patel", email: "sam@taskforge.ai", seed: "Sam", createdAt: new Date("2024-01-10") },
-    { id: "u4", name: "Casey Morgan", email: "casey@taskforge.ai", seed: "Casey", createdAt: new Date("2024-01-15") },
-    { id: "u5", name: "Riley Chen", email: "riley@taskforge.ai", seed: "Riley", createdAt: new Date("2024-01-20") },
+    { id: "u1", name: "Alex Rivera", email: "alex@trackezz.com", seed: "Alex", createdAt: new Date("2024-01-01") },
+    { id: "u2", name: "Jordan Kim", email: "jordan@trackezz.com", seed: "Jordan", createdAt: new Date("2024-01-05") },
+    { id: "u3", name: "Sam Patel", email: "sam@trackezz.com", seed: "Sam", createdAt: new Date("2024-01-10") },
+    { id: "u4", name: "Casey Morgan", email: "casey@trackezz.com", seed: "Casey", createdAt: new Date("2024-01-15") },
+    { id: "u5", name: "Riley Chen", email: "riley@trackezz.com", seed: "Riley", createdAt: new Date("2024-01-20") },
   ];
 
   const users = await Promise.all(
@@ -105,7 +105,7 @@ async function main() {
   const projects = await Promise.all([
     prisma.project.create({
       data: {
-        id: "p1", name: "TaskForge Platform", key: "TF", description: "Core platform development",
+        id: "p1", name: "TrackEzz Platform", key: "TE", description: "Core platform development",
         color: "#6366f1", icon: "⚡", organizationId: organization.id, leadId: "u1", issueCounter: 12,
         createdAt: new Date("2024-01-15"), updatedAt: new Date("2024-03-10"),
       },
@@ -184,18 +184,18 @@ async function main() {
   };
 
   const issuesData = [
-    { id: "i1", issueNumber: 1, issueKey: "TF-1", title: "Design and implement the new dashboard layout", description: "Redesign the main dashboard with widgets, quick stats, and recent activity feed.", type: "feature" as const, status: "in_progress" as const, priority: "high" as const, reporterId: "u1", projectId: "p1", sprintId: "sp3", epicId: "e3", estimate: 8, dueDate: dueInDays(2), createdAt: new Date("2024-02-12"), updatedAt: new Date("2024-02-15"), assignees: ["u1"], labels: ["l1", "l6"] },
-    { id: "i2", issueNumber: 2, issueKey: "TF-2", title: "Implement drag-and-drop Kanban board", description: "Build a fully functional Kanban board with drag-and-drop support.", type: "feature" as const, status: "in_progress" as const, priority: "high" as const, reporterId: "u1", projectId: "p1", sprintId: "sp3", epicId: "e3", estimate: 13, dueDate: dueInDays(5), createdAt: new Date("2024-02-12"), updatedAt: new Date("2024-02-15"), assignees: ["u2"], labels: ["l1"] },
-    { id: "i3", issueNumber: 3, issueKey: "TF-3", title: "Session token expires prematurely on idle", description: "Users are logged out after ~10 minutes of inactivity.", type: "bug" as const, status: "done" as const, priority: "urgent" as const, severity: "critical" as const, reporterId: "u2", projectId: "p1", sprintId: "sp3", estimate: 3, environment: "Production", reproductionSteps: "1. Log in\n2. Idle 10 min", expectedResult: "Stay logged in", actualResult: "Redirect to login", createdAt: new Date("2024-02-13"), updatedAt: new Date("2024-02-14"), assignees: ["u1"], labels: ["l2"] },
-    { id: "i4", issueNumber: 4, issueKey: "TF-4", title: "AI-powered issue summarization endpoint", type: "feature" as const, status: "todo" as const, priority: "medium" as const, reporterId: "u1", projectId: "p1", sprintId: "sp3", epicId: "e4", estimate: 5, createdAt: new Date("2024-02-12"), updatedAt: new Date("2024-02-12"), assignees: ["u3"], labels: ["l2", "l3"] },
-    { id: "i5", issueNumber: 5, issueKey: "TF-5", title: "Duplicate bug detection using embeddings", type: "feature" as const, status: "todo" as const, priority: "medium" as const, reporterId: "u1", projectId: "p1", epicId: "e4", estimate: 8, createdAt: new Date("2024-02-12"), updatedAt: new Date("2024-02-12"), assignees: [], labels: ["l2", "l3"] },
-    { id: "i6", issueNumber: 6, issueKey: "TF-6", title: "File upload widget crashes on large images > 10MB", type: "bug" as const, status: "in_review" as const, priority: "high" as const, severity: "major" as const, reporterId: "u3", projectId: "p1", sprintId: "sp3", estimate: 2, dueDate: dueInDays(9), environment: "Staging", createdAt: new Date("2024-02-14"), updatedAt: new Date("2024-02-15"), assignees: ["u2"], labels: ["l1"] },
-    { id: "i7", issueNumber: 7, issueKey: "TF-7", title: "Implement real-time comment updates with Pusher", type: "feature" as const, status: "backlog" as const, priority: "medium" as const, reporterId: "u1", projectId: "p1", epicId: "e3", estimate: 8, createdAt: new Date("2024-02-10"), updatedAt: new Date("2024-02-10"), assignees: ["u4"], labels: ["l1", "l2"] },
-    { id: "i8", issueNumber: 8, issueKey: "TF-8", title: "Sprint velocity chart not rendering on Safari", type: "bug" as const, status: "todo" as const, priority: "low" as const, severity: "minor" as const, reporterId: "u4", projectId: "p1", sprintId: "sp3", estimate: 2, environment: "Production", browserDevice: "Safari 17", createdAt: new Date("2024-02-15"), updatedAt: new Date("2024-02-15"), assignees: [], labels: ["l1"] },
-    { id: "i9", issueNumber: 9, issueKey: "TF-9", title: "Command palette (Ctrl+K) with fuzzy search", type: "feature" as const, status: "todo" as const, priority: "medium" as const, reporterId: "u1", projectId: "p1", sprintId: "sp4", epicId: "e3", estimate: 5, createdAt: new Date("2024-02-10"), updatedAt: new Date("2024-02-10"), assignees: [], labels: ["l1"] },
-    { id: "i10", issueNumber: 10, issueKey: "TF-10", title: "Setup Prisma schema and initial migrations", type: "task" as const, status: "done" as const, priority: "high" as const, reporterId: "u1", projectId: "p1", sprintId: "sp2", epicId: "e1", estimate: 5, createdAt: new Date("2024-01-29"), updatedAt: new Date("2024-02-02"), assignees: ["u1"], labels: ["l3"] },
-    { id: "i11", issueNumber: 11, issueKey: "TF-11", title: "Rate limiting middleware for API routes", type: "task" as const, status: "backlog" as const, priority: "medium" as const, reporterId: "u1", projectId: "p1", estimate: 3, createdAt: new Date("2024-02-10"), updatedAt: new Date("2024-02-10"), assignees: [], labels: ["l2", "l5"] },
-    { id: "i12", issueNumber: 12, issueKey: "TF-12", title: "Notification email templates with Resend", type: "task" as const, status: "backlog" as const, priority: "low" as const, reporterId: "u1", projectId: "p1", estimate: 4, createdAt: new Date("2024-02-10"), updatedAt: new Date("2024-02-10"), assignees: ["u5"], labels: ["l2"] },
+    { id: "i1", issueNumber: 1, issueKey: "TE-1", title: "Design and implement the new dashboard layout", description: "Redesign the main dashboard with widgets, quick stats, and recent activity feed.", type: "feature" as const, status: "in_progress" as const, priority: "high" as const, reporterId: "u1", projectId: "p1", sprintId: "sp3", epicId: "e3", estimate: 8, dueDate: dueInDays(2), createdAt: new Date("2024-02-12"), updatedAt: new Date("2024-02-15"), assignees: ["u1"], labels: ["l1", "l6"] },
+    { id: "i2", issueNumber: 2, issueKey: "TE-2", title: "Implement drag-and-drop Kanban board", description: "Build a fully functional Kanban board with drag-and-drop support.", type: "feature" as const, status: "in_progress" as const, priority: "high" as const, reporterId: "u1", projectId: "p1", sprintId: "sp3", epicId: "e3", estimate: 13, dueDate: dueInDays(5), createdAt: new Date("2024-02-12"), updatedAt: new Date("2024-02-15"), assignees: ["u2"], labels: ["l1"] },
+    { id: "i3", issueNumber: 3, issueKey: "TE-3", title: "Session token expires prematurely on idle", description: "Users are logged out after ~10 minutes of inactivity.", type: "bug" as const, status: "done" as const, priority: "urgent" as const, severity: "critical" as const, reporterId: "u2", projectId: "p1", sprintId: "sp3", estimate: 3, environment: "Production", reproductionSteps: "1. Log in\n2. Idle 10 min", expectedResult: "Stay logged in", actualResult: "Redirect to login", createdAt: new Date("2024-02-13"), updatedAt: new Date("2024-02-14"), assignees: ["u1"], labels: ["l2"] },
+    { id: "i4", issueNumber: 4, issueKey: "TE-4", title: "AI-powered issue summarization endpoint", type: "feature" as const, status: "todo" as const, priority: "medium" as const, reporterId: "u1", projectId: "p1", sprintId: "sp3", epicId: "e4", estimate: 5, createdAt: new Date("2024-02-12"), updatedAt: new Date("2024-02-12"), assignees: ["u3"], labels: ["l2", "l3"] },
+    { id: "i5", issueNumber: 5, issueKey: "TE-5", title: "Duplicate bug detection using embeddings", type: "feature" as const, status: "todo" as const, priority: "medium" as const, reporterId: "u1", projectId: "p1", epicId: "e4", estimate: 8, createdAt: new Date("2024-02-12"), updatedAt: new Date("2024-02-12"), assignees: [], labels: ["l2", "l3"] },
+    { id: "i6", issueNumber: 6, issueKey: "TE-6", title: "File upload widget crashes on large images > 10MB", type: "bug" as const, status: "in_review" as const, priority: "high" as const, severity: "major" as const, reporterId: "u3", projectId: "p1", sprintId: "sp3", estimate: 2, dueDate: dueInDays(9), environment: "Staging", createdAt: new Date("2024-02-14"), updatedAt: new Date("2024-02-15"), assignees: ["u2"], labels: ["l1"] },
+    { id: "i7", issueNumber: 7, issueKey: "TE-7", title: "Implement real-time comment updates with Pusher", type: "feature" as const, status: "backlog" as const, priority: "medium" as const, reporterId: "u1", projectId: "p1", epicId: "e3", estimate: 8, createdAt: new Date("2024-02-10"), updatedAt: new Date("2024-02-10"), assignees: ["u4"], labels: ["l1", "l2"] },
+    { id: "i8", issueNumber: 8, issueKey: "TE-8", title: "Sprint velocity chart not rendering on Safari", type: "bug" as const, status: "todo" as const, priority: "low" as const, severity: "minor" as const, reporterId: "u4", projectId: "p1", sprintId: "sp3", estimate: 2, environment: "Production", browserDevice: "Safari 17", createdAt: new Date("2024-02-15"), updatedAt: new Date("2024-02-15"), assignees: [], labels: ["l1"] },
+    { id: "i9", issueNumber: 9, issueKey: "TE-9", title: "Command palette (Ctrl+K) with fuzzy search", type: "feature" as const, status: "todo" as const, priority: "medium" as const, reporterId: "u1", projectId: "p1", sprintId: "sp4", epicId: "e3", estimate: 5, createdAt: new Date("2024-02-10"), updatedAt: new Date("2024-02-10"), assignees: [], labels: ["l1"] },
+    { id: "i10", issueNumber: 10, issueKey: "TE-10", title: "Setup Prisma schema and initial migrations", type: "task" as const, status: "done" as const, priority: "high" as const, reporterId: "u1", projectId: "p1", sprintId: "sp2", epicId: "e1", estimate: 5, createdAt: new Date("2024-01-29"), updatedAt: new Date("2024-02-02"), assignees: ["u1"], labels: ["l3"] },
+    { id: "i11", issueNumber: 11, issueKey: "TE-11", title: "Rate limiting middleware for API routes", type: "task" as const, status: "backlog" as const, priority: "medium" as const, reporterId: "u1", projectId: "p1", estimate: 3, createdAt: new Date("2024-02-10"), updatedAt: new Date("2024-02-10"), assignees: [], labels: ["l2", "l5"] },
+    { id: "i12", issueNumber: 12, issueKey: "TE-12", title: "Notification email templates with Resend", type: "task" as const, status: "backlog" as const, priority: "low" as const, reporterId: "u1", projectId: "p1", estimate: 4, createdAt: new Date("2024-02-10"), updatedAt: new Date("2024-02-10"), assignees: ["u5"], labels: ["l2"] },
   ];
 
   for (const issue of issuesData) {
@@ -237,28 +237,28 @@ async function main() {
 
   await prisma.notification.createMany({
     data: [
-      { id: "n1", type: "mention", title: "Jordan mentioned you", message: "in TF-3", read: false, userId: "u1", issueId: "i3", actorId: "u2", createdAt: new Date("2024-02-14T10:30:00") },
-      { id: "n2", type: "assign", title: "Assigned to you", message: "TF-1: Dashboard layout", read: false, userId: "u1", issueId: "i1", actorId: "u2", createdAt: new Date("2024-02-13T09:00:00") },
-      { id: "n3", type: "comment", title: "New comment on TF-3", message: "Sam: Confirmed working", read: true, userId: "u1", issueId: "i3", actorId: "u3", createdAt: new Date("2024-02-14T16:00:00") },
-      { id: "n4", type: "status_change", title: "Status changed", message: "TF-10 → Done", read: true, userId: "u1", issueId: "i10", actorId: "u1", createdAt: new Date("2024-02-02T14:00:00") },
+      { id: "n1", type: "mention", title: "Jordan mentioned you", message: "in TE-3", read: false, userId: "u1", issueId: "i3", actorId: "u2", createdAt: new Date("2024-02-14T10:30:00") },
+      { id: "n2", type: "assign", title: "Assigned to you", message: "TE-1: Dashboard layout", read: false, userId: "u1", issueId: "i1", actorId: "u2", createdAt: new Date("2024-02-13T09:00:00") },
+      { id: "n3", type: "comment", title: "New comment on TE-3", message: "Sam: Confirmed working", read: true, userId: "u1", issueId: "i3", actorId: "u3", createdAt: new Date("2024-02-14T16:00:00") },
+      { id: "n4", type: "status_change", title: "Status changed", message: "TE-10 → Done", read: true, userId: "u1", issueId: "i10", actorId: "u1", createdAt: new Date("2024-02-02T14:00:00") },
       { id: "n5", type: "sprint", title: "Sprint 3 is active", message: "Boards & Collaboration", read: true, userId: "u1", actorId: "u2", createdAt: new Date("2024-02-12T09:00:00") },
     ],
   });
 
   await prisma.activityLog.createMany({
     data: [
-      { id: "al1", action: "changed status", details: "TF-3 → Done", userId: "u3", issueId: "i3", projectId: "p1", organizationId: organization.id, createdAt: new Date("2024-02-14T16:00:00") },
-      { id: "al2", action: "commented on", details: "TF-3", userId: "u3", issueId: "i3", projectId: "p1", organizationId: organization.id, createdAt: new Date("2024-02-14T16:00:00") },
-      { id: "al3", action: "changed priority", details: "TF-6 → High", userId: "u1", issueId: "i6", projectId: "p1", organizationId: organization.id, createdAt: new Date("2024-02-14T15:00:00") },
-      { id: "al4", action: "assigned", details: "TF-6 → Jordan", userId: "u1", issueId: "i6", projectId: "p1", organizationId: organization.id, createdAt: new Date("2024-02-14T14:00:00") },
-      { id: "al5", action: "created issue", details: "TF-8", userId: "u4", issueId: "i8", projectId: "p1", organizationId: organization.id, createdAt: new Date("2024-02-15T11:00:00") },
+      { id: "al1", action: "changed status", details: "TE-3 → Done", userId: "u3", issueId: "i3", projectId: "p1", organizationId: organization.id, createdAt: new Date("2024-02-14T16:00:00") },
+      { id: "al2", action: "commented on", details: "TE-3", userId: "u3", issueId: "i3", projectId: "p1", organizationId: organization.id, createdAt: new Date("2024-02-14T16:00:00") },
+      { id: "al3", action: "changed priority", details: "TE-6 → High", userId: "u1", issueId: "i6", projectId: "p1", organizationId: organization.id, createdAt: new Date("2024-02-14T15:00:00") },
+      { id: "al4", action: "assigned", details: "TE-6 → Jordan", userId: "u1", issueId: "i6", projectId: "p1", organizationId: organization.id, createdAt: new Date("2024-02-14T14:00:00") },
+      { id: "al5", action: "created issue", details: "TE-8", userId: "u4", issueId: "i8", projectId: "p1", organizationId: organization.id, createdAt: new Date("2024-02-15T11:00:00") },
       { id: "al6", action: "merged PR", details: "fix/session-refresh", userId: "u1", issueId: "i3", projectId: "p1", organizationId: organization.id, createdAt: new Date("2024-02-14T13:00:00") },
     ],
   });
 
   await prisma.invitation.createMany({
     data: [
-      { id: "inv1", email: "jordan@taskforge.ai", token: "seed-invite-jordan-project", projectRole: "member", projectId: "p1", invitedById: "u1", status: "pending", expiresAt: new Date("2026-12-31"), createdAt: new Date("2024-02-14") },
+      { id: "inv1", email: "jordan@trackezz.com", token: "seed-invite-jordan-project", projectRole: "member", projectId: "p1", invitedById: "u1", status: "pending", expiresAt: new Date("2026-12-31"), createdAt: new Date("2024-02-14") },
       { id: "inv2", email: "designer@example.com", token: "seed-invite-designer-org", organizationRole: "project_admin", organizationId: organization.id, invitedById: "u1", status: "pending", expiresAt: new Date("2026-12-31"), createdAt: new Date("2024-02-13") },
     ],
   });
@@ -267,7 +267,7 @@ async function main() {
     data: {
       id: "n6",
       type: "invitation",
-      title: "Invitation to TaskForge",
+      title: "Invitation to TrackEzz",
       message: "invited you to join as member",
       read: false,
       userId: "u2",
@@ -284,7 +284,7 @@ async function main() {
   await prisma.aIMessage.createMany({
     data: [
       { id: "aim1", role: "user", content: "Help me plan Sprint 4?", conversationId: aiConvo.id, createdAt: new Date("2024-02-15T10:00:00") },
-      { id: "aim2", role: "assistant", content: "Prioritize TF-9, TF-4, and TF-5 for the AI epic.", conversationId: aiConvo.id, createdAt: new Date("2024-02-15T10:01:00") },
+      { id: "aim2", role: "assistant", content: "Prioritize TE-9, TE-4, and TE-5 for the AI epic.", conversationId: aiConvo.id, createdAt: new Date("2024-02-15T10:01:00") },
     ],
   });
 

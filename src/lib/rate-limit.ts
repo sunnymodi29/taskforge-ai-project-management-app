@@ -14,7 +14,7 @@ function getLimiter(name: string, requests: number, window: `${number} s` | `${n
       new Ratelimit({
         redis,
         limiter: Ratelimit.slidingWindow(requests, window),
-        prefix: `taskforge:${name}`,
+        prefix: `trackezz:${name}`,
       })
     );
   }

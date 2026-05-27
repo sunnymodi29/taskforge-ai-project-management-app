@@ -1,4 +1,4 @@
-# TaskForge AI
+# TrackEzz
 
 **Build Faster. Track Smarter. Ship Better.**
 
@@ -43,7 +43,7 @@ npm install
 cp .env.example .env
 ```
 
-Set `BREVO_API_KEY` and `BREVO_SENDER_EMAIL` for workspace invitation emails (optional in dev — emails are skipped if unset).
+Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `EMAIL`, and `SMTP_PASS` for invitation emails (Brevo **SMTP** credentials from [SMTP & API](https://app.brevo.com/settings/keys/smtp)). `SMTP_USER` is your Brevo login email; `SMTP_PASS` is the SMTP key; `EMAIL` is a [verified sender](https://app.brevo.com/senders).
 
 Generate `AUTH_SECRET`:
 
@@ -80,7 +80,7 @@ Open [http://localhost:3000](http://localhost:3000) and sign in:
 
 | Email | Password |
 |-------|----------|
-| `alex@taskforge.ai` | `password123` |
+| `alex@trackezz.com` | `password123` |
 
 ## Scripts
 
@@ -148,7 +148,7 @@ prisma/
    - `AUTH_SECRET` — `openssl rand -base64 32`
    - `AUTH_URL` — `https://your-app.vercel.app`
    - `NEXT_PUBLIC_APP_URL` — same as `AUTH_URL`
-   - `BREVO_*` — if you send invitation emails
+   - `SMTP_*` and `EMAIL` — Brevo invitation emails
 5. Deploy. Optionally seed production once: `npm run db:seed` (with `DATABASE_URL` pointing at Neon).
 
 **Note:** Avatar and comment file uploads use local disk in development. On Vercel they are disabled until you add object storage (e.g. Vercel Blob).
@@ -164,4 +164,4 @@ prisma/
 
 ## License
 
-Private — TaskForge AI
+Private — TrackEzz

@@ -133,7 +133,7 @@ export function Sidebar() {
             </div>
             <div className="min-w-0">
               <div className="text-sm font-bold text-foreground truncate">
-                TaskForge AI
+                TrackEzz
               </div>
               <div className="text-[10px] text-muted-foreground truncate">
                 {organization?.name ? (

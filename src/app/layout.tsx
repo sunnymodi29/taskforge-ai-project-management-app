@@ -4,19 +4,19 @@ import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
   title: {
-    default: "TaskForge AI – Build Faster. Track Smarter. Ship Better.",
-    template: "%s | TaskForge AI",
+    default: "TrackEzz – Build Faster. Track Smarter. Ship Better.",
+    template: "%s | TrackEzz",
   },
   description:
     "Enterprise-grade project management and bug tracking powered by AI. Inspired by Linear, ClickUp, and Jira.",
   keywords: ["project management", "bug tracking", "kanban", "sprints", "AI", "SaaS"],
-  authors: [{ name: "TaskForge AI" }],
+  authors: [{ name: "TrackEzz" }],
   openGraph: {
     type: "website",
     locale: "en_US",
-    title: "TaskForge AI",
+    title: "TrackEzz",
     description: "Build Faster. Track Smarter. Ship Better.",
-    siteName: "TaskForge AI",
+    siteName: "TrackEzz",
   },
 };
 

@@ -37,8 +37,8 @@ export default async function InvitePage({
           <p className="text-muted-foreground text-sm">
             Ask {invitation.invitedBy.name} to send a new invite to {invitation.email}.
           </p>
-          <Link href="/login" className="inline-flex">
-            <Button>Go to login</Button>
+          <Link href="/dashboard" className="inline-flex">
+            <Button>Go Back</Button>
           </Link>
         </div>
       </div>
@@ -48,7 +48,7 @@ export default async function InvitePage({
   const orgName =
     invitation.organization?.name ??
     invitation.project?.organization?.name ??
-    "TaskForge";
+    "TrackEzz";
   const projectName = invitation.project?.name;
   const roleLabel =
     invitation.projectRole?.replace("_", " ") ??

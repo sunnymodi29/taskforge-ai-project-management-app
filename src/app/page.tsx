@@ -12,7 +12,7 @@ export default function LandingPage() {
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <Zap className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight">TaskForge AI</span>
+            <span className="text-xl font-bold tracking-tight">TrackEzz</span>
           </div>
           <nav className="hidden md:flex items-center gap-8">
             <Link href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Features</Link>
@@ -108,7 +108,7 @@ export default function LandingPage() {
               <div className="relative z-10">
                 <h2 className="text-3xl md:text-5xl font-bold mb-6">Ready to ship better software?</h2>
                 <p className="text-lg text-primary-foreground/80 mb-10">
-                  Join 10,000+ developers tracking their work with TaskForge AI.
+                  Join 10,000+ developers tracking their work with TrackEzz.
                 </p>
                 <Link href="/login">
                   <Button size="lg" variant="secondary" className="h-12 px-10 text-lg">
@@ -131,7 +131,7 @@ export default function LandingPage() {
             <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
               <Zap className="h-3 w-3 text-white" />
             </div>
-            <span className="font-bold">TaskForge AI</span>
+            <span className="font-bold">TrackEzz</span>
           </div>
           <div className="flex gap-8 text-sm text-muted-foreground">
             <Link href="#" className="hover:text-foreground">Terms</Link>
@@ -140,7 +140,7 @@ export default function LandingPage() {
             <Link href="#" className="hover:text-foreground">Help</Link>
           </div>
           <div className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} TaskForge AI. All rights reserved.
+            © {new Date().getFullYear()} TrackEzz. All rights reserved.
           </div>
         </div>
       </footer>

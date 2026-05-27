@@ -37,7 +37,7 @@ export function ProjectSwitchOverlay() {
       </div>
 
       <div className="flex flex-col items-center gap-6 px-8 max-w-sm text-center animate-scale-in">
-        {/* Project badge + TaskForge orbit */}
+        {/* Project badge + TrackEzz orbit */}
         <div className="relative">
           <div
             className="absolute -inset-3 rounded-3xl opacity-35 blur-2xl animate-pulse"

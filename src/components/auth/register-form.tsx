@@ -60,7 +60,7 @@ export function RegisterForm() {
           </div>
           <h1 className="text-2xl font-bold">Create your account</h1>
           <p className="text-muted-foreground mt-2 text-sm">
-            Join TaskForge AI and start shipping faster.
+            Join TrackEzz and start shipping faster.
           </p>
         </div>
 
@@ -75,6 +75,7 @@ export function RegisterForm() {
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                placeholder="John Doe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="pl-9"
@@ -90,6 +91,7 @@ export function RegisterForm() {
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                placeholder="john.doe@example.com"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -105,6 +107,7 @@ export function RegisterForm() {
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                placeholder="Enter your password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

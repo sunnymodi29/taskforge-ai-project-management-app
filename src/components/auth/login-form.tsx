@@ -46,7 +46,7 @@ export function LoginForm() {
           </div>
           <h1 className="text-2xl font-bold">Welcome back</h1>
           <p className="text-muted-foreground mt-2 text-sm">
-            Sign in to your TaskForge AI workspace.
+            Sign in to your TrackEzz workspace.
           </p>
         </div>
 
@@ -61,6 +61,7 @@ export function LoginForm() {
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                placeholder="john.doe@example.com"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -77,6 +78,7 @@ export function LoginForm() {
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                placeholder="Enter your password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

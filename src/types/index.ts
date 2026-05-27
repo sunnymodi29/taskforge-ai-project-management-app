@@ -1,5 +1,5 @@
 // ==========================================
-// TaskForge AI - Core Type Definitions
+// TrackEzz - Core Type Definitions
 // ==========================================
 
 export type Priority = "urgent" | "high" | "medium" | "low" | "none";

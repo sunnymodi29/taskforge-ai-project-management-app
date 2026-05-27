@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, UserPlus, Trash2, Clock } from "lucide-react";
+import { Mail, UserPlus, Trash2, Clock, Send, Copy, Check } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -16,6 +16,7 @@ import { useDataStore } from "@/store/data-store";
 import {
   sendOrganizationProjectAdminInvitation,
   cancelInvitation,
+  resendInvitationEmail,
 } from "@/lib/actions/invitations";
 import { formatRelativeTime } from "@/lib/utils";
 
@@ -30,8 +31,11 @@ export function OrganizationMembersSettings() {
   } = useDataStore();
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const orgInvites = invitations.filter(
     (inv) => inv.organizationId && !inv.projectId
@@ -43,17 +47,47 @@ export function OrganizationMembersSettings() {
     setError(null);
     setSuccess(null);
     try {
-      await sendOrganizationProjectAdminInvitation({
+      const result = await sendOrganizationProjectAdminInvitation({
         organizationId: organization.id,
         email: email.trim(),
       });
-      setSuccess(`Invitation sent to ${email}`);
+      setSuccess(`Invitation email sent to ${email.trim()}`);
+      setLastInviteUrl(result.inviteUrl);
+      setLinkCopied(false);
       setEmail("");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to send invitation");
     } finally {
       setSending(false);
+    }
+  };
+
+  const copyInviteLink = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setLastInviteUrl(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      setError("Could not copy link");
+    }
+  };
+
+  const handleResendInvite = async (id: string) => {
+    setResendingId(id);
+    setError(null);
+    setSuccess(null);
+    try {
+      const { inviteUrl } = await resendInvitationEmail(id);
+      setSuccess("Invitation email resent.");
+      setLastInviteUrl(inviteUrl);
+      setLinkCopied(false);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to resend email");
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -101,7 +135,26 @@ export function OrganizationMembersSettings() {
           <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">{error}</p>
         )}
         {success && (
-          <p className="text-xs text-green-600 bg-green-500/10 rounded px-2 py-1.5">{success}</p>
+          <div className="text-xs text-green-600 bg-green-500/10 rounded px-2 py-1.5 space-y-1.5">
+            <p>{success}</p>
+            {lastInviteUrl && (
+              <button
+                type="button"
+                onClick={() => void copyInviteLink(lastInviteUrl)}
+                className="inline-flex items-center gap-1 text-green-700 hover:underline font-medium"
+              >
+                {linkCopied ? (
+                  <>
+                    <Check className="h-3 w-3" /> Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3" /> Copy invite link
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         )}
 
         <div className="space-y-2">
@@ -142,13 +195,25 @@ export function OrganizationMembersSettings() {
                   </div>
                 </div>
                 {permissions.canInviteOrgProjectAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => void handleCancelInvite(inv.id)}
-                    className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      type="button"
+                      title="Resend email"
+                      disabled={resendingId === inv.id}
+                      onClick={() => void handleResendInvite(inv.id)}
+                      className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground disabled:opacity-50"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Cancel invitation"
+                      onClick={() => void handleCancelInvite(inv.id)}
+                      className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 )}
               </div>
             ))}

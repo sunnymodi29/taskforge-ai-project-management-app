@@ -124,7 +124,7 @@ export default async function ProjectBugsPage({ params }: { params: Promise<{ pr
                   <span>AI Diagnostics Ready</span>
                </div>
                <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
-                  TaskForge AI has analyzed 12 sessions. Root cause detection is active for this project.
+                  TrackEzz has analyzed 12 sessions. Root cause detection is active for this project.
                </p>
             </CardContent>
          </Card>

@@ -1,4 +1,4 @@
-// TaskForge AI — PostgreSQL (local Docker, Neon, or Vercel Postgres)
+// TrackEzz — PostgreSQL (local Docker, Neon, or Vercel Postgres)
 
 generator client {
   provider = "prisma-client"

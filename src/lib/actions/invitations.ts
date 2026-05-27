@@ -11,11 +11,21 @@ import {
 } from "@/lib/auth/rbac";
 import { serializeInvitation } from "@/lib/serializers";
 import { invalidateBootstrapForUser } from "@/lib/org/cache";
-import { sendBrevoEmail, buildProjectInviteEmail } from "@/lib/email/brevo";
+import {
+  buildOrgAdminInviteEmail,
+  buildProjectInviteEmail,
+  sendBrevoEmailOrThrow,
+} from "@/lib/email/brevo";
 import { notifyInvitationReceived } from "@/lib/notifications/service";
-import type { Invitation, OrganizationRole, ProjectRole } from "@/types";
+import type { Invitation, ProjectRole } from "@/types";
 
 const INVITE_TTL_DAYS = 7;
+
+export type InvitationSendResult = {
+  invitation: Invitation;
+  inviteUrl: string;
+  emailSent: true;
+};
 
 function appOrigin(): string {
   return (
@@ -25,11 +35,39 @@ function appOrigin(): string {
   );
 }
 
+function inviteUrlForToken(token: string): string {
+  return `${appOrigin()}/invite/${token}`;
+}
+
+async function deliverInvitationEmail(
+  invitationId: string,
+  params: {
+    to: string;
+    subject: string;
+    html: string;
+    text: string;
+    replyTo?: { email: string; name?: string };
+  }
+): Promise<void> {
+  try {
+    await sendBrevoEmailOrThrow({
+      to: params.to,
+      subject: params.subject,
+      htmlContent: params.html,
+      textContent: params.text,
+      replyTo: params.replyTo,
+    });
+  } catch (e) {
+    await prisma.invitation.delete({ where: { id: invitationId } }).catch(() => {});
+    throw e;
+  }
+}
+
 /** Owner invites someone to create projects (org-level project_admin). */
 export async function sendOrganizationProjectAdminInvitation(input: {
   organizationId: string;
   email: string;
-}): Promise<Invitation> {
+}): Promise<InvitationSendResult> {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
@@ -63,13 +101,21 @@ export async function sendOrganizationProjectAdminInvitation(input: {
     include: { invitedBy: true },
   });
 
-  const inviteUrl = `${appOrigin()}/invite/${invitation.token}`;
+  const inviteUrl = inviteUrlForToken(invitation.token);
   const { subject, html, text } = buildOrgAdminInviteEmail({
     inviteUrl,
     organizationName: org.name,
     inviterName: inviter?.name ?? inviter?.email ?? "Owner",
   });
-  await sendBrevoEmail({ to: email, subject, htmlContent: html, textContent: text });
+  await deliverInvitationEmail(invitation.id, {
+    to: email,
+    subject,
+    html,
+    text,
+    replyTo: inviter?.email
+      ? { email: inviter.email, name: inviter.name ?? undefined }
+      : undefined,
+  });
 
   await notifyInvitationReceived({
     invitationId: invitation.id,
@@ -84,7 +130,11 @@ export async function sendOrganizationProjectAdminInvitation(input: {
   await invalidateBootstrapForUser(session.user.id, org.slug);
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard/inbox");
-  return serializeInvitation(invitation);
+  return {
+    invitation: serializeInvitation(invitation),
+    inviteUrl,
+    emailSent: true,
+  };
 }
 
 /** Owner or project admin invites to a specific project. */
@@ -92,7 +142,7 @@ export async function sendProjectInvitation(input: {
   projectId: string;
   email: string;
   role: ProjectRole;
-}): Promise<Invitation> {
+}): Promise<InvitationSendResult> {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
@@ -128,7 +178,7 @@ export async function sendProjectInvitation(input: {
 
   const inviter = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true },
+    select: { name: true, email: true },
   });
 
   const expiresAt = new Date();
@@ -145,7 +195,7 @@ export async function sendProjectInvitation(input: {
     include: { invitedBy: true },
   });
 
-  const inviteUrl = `${appOrigin()}/invite/${invitation.token}`;
+  const inviteUrl = inviteUrlForToken(invitation.token);
   const { subject, html, text } = buildProjectInviteEmail({
     inviteUrl,
     projectName: project.name,
@@ -153,7 +203,15 @@ export async function sendProjectInvitation(input: {
     inviterName: inviter?.name ?? "A teammate",
     role: input.role,
   });
-  await sendBrevoEmail({ to: email, subject, htmlContent: html, textContent: text });
+  await deliverInvitationEmail(invitation.id, {
+    to: email,
+    subject,
+    html,
+    text,
+    replyTo: inviter?.email
+      ? { email: inviter.email, name: inviter.name ?? undefined }
+      : undefined,
+  });
 
   await notifyInvitationReceived({
     invitationId: invitation.id,
@@ -169,7 +227,120 @@ export async function sendProjectInvitation(input: {
   await invalidateBootstrapForUser(session.user.id, project.organization.slug);
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/inbox");
-  return serializeInvitation(invitation);
+  return {
+    invitation: serializeInvitation(invitation),
+    inviteUrl,
+    emailSent: true,
+  };
+}
+
+/** Resend the invitation email for a pending invite. */
+export async function resendInvitationEmail(
+  invitationId: string
+): Promise<{ inviteUrl: string; emailSent: true }> {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const invitation = await prisma.invitation.findUnique({
+    where: { id: invitationId },
+    include: {
+      organization: true,
+      project: { include: { organization: true } },
+      invitedBy: true,
+    },
+  });
+  if (!invitation) throw new Error("NOT_FOUND");
+  if (invitation.status !== "pending") {
+    throw new Error("Only pending invitations can be resent");
+  }
+  if (invitation.expiresAt < new Date()) {
+    throw new Error("Invitation expired — send a new invitation");
+  }
+
+  if (invitation.organizationId && invitation.organization) {
+    if (!isOrgOwner(session.user.id, invitation.organization)) {
+      throw new Error("FORBIDDEN");
+    }
+  } else if (invitation.projectId && invitation.project) {
+    const orgCtx = await requireOrganizationMember(
+      session.user.id,
+      invitation.project.organizationId
+    );
+    const pm = await prisma.projectMember.findUnique({
+      where: {
+        userId_projectId: {
+          userId: session.user.id,
+          projectId: invitation.projectId,
+        },
+      },
+    });
+    if (
+      !canManageProject(
+        session.user.id,
+        invitation.project.organization,
+        orgCtx.member,
+        pm
+      )
+    ) {
+      throw new Error("FORBIDDEN");
+    }
+  } else {
+    throw new Error("NOT_FOUND");
+  }
+
+  const inviteUrl = inviteUrlForToken(invitation.token);
+  const inviterName =
+    invitation.invitedBy.name ?? invitation.invitedBy.email ?? "A teammate";
+
+  if (invitation.projectId && invitation.project && invitation.projectRole) {
+    const { subject, html, text } = buildProjectInviteEmail({
+      inviteUrl,
+      projectName: invitation.project.name,
+      organizationName: invitation.project.organization.name,
+      inviterName,
+      role: invitation.projectRole,
+    });
+    await sendBrevoEmailOrThrow({
+      to: invitation.email,
+      subject,
+      htmlContent: html,
+      textContent: text,
+      replyTo: invitation.invitedBy.email
+        ? {
+            email: invitation.invitedBy.email,
+            name: invitation.invitedBy.name ?? undefined,
+          }
+        : undefined,
+    });
+  } else if (
+    invitation.organizationId &&
+    invitation.organization &&
+    invitation.organizationRole
+  ) {
+    const { subject, html, text } = buildOrgAdminInviteEmail({
+      inviteUrl,
+      organizationName: invitation.organization.name,
+      inviterName,
+    });
+    await sendBrevoEmailOrThrow({
+      to: invitation.email,
+      subject,
+      htmlContent: html,
+      textContent: text,
+      replyTo: invitation.invitedBy.email
+        ? {
+            email: invitation.invitedBy.email,
+            name: invitation.invitedBy.name ?? undefined,
+          }
+        : undefined,
+    });
+  } else {
+    throw new Error("Invalid invitation");
+  }
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard");
+  return { inviteUrl, emailSent: true };
 }
 
 async function validateNotDuplicateMember(email: string, organizationId: string) {
@@ -359,24 +530,12 @@ export async function acceptInvitation(token: string): Promise<{
   });
 
   await invalidateBootstrapForUser(session.user.id, organizationSlug);
+  if (invitation.invitedById !== session.user.id) {
+    await invalidateBootstrapForUser(invitation.invitedById, organizationSlug);
+  }
   revalidatePath("/dashboard", "layout");
+  revalidatePath("/dashboard/settings");
 
   return { organizationSlug, projectKey };
-}
-
-function buildOrgAdminInviteEmail(params: {
-  inviteUrl: string;
-  organizationName: string;
-  inviterName: string;
-}) {
-  const subject = `You're invited to manage projects at ${params.organizationName}`;
-  const text = `${params.inviterName} invited you as a project admin at ${params.organizationName}.\n\nAccept: ${params.inviteUrl}`;
-  const html = `
-    <div style="font-family:system-ui,sans-serif;max-width:520px;padding:24px">
-      <h2>Project admin invitation</h2>
-      <p><strong>${params.inviterName}</strong> invited you to create and manage projects at <strong>${params.organizationName}</strong>.</p>
-      <p><a href="${params.inviteUrl}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Accept invitation</a></p>
-    </div>`;
-  return { subject, html, text };
 }
 
