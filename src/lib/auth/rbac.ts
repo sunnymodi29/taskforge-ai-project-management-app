@@ -118,6 +118,28 @@ export function canManageIssues(
   );
 }
 
+/** Owner, org member, or member of any project in the org. */
+export async function userHasOrganizationAccess(
+  userId: string,
+  organizationId: string
+): Promise<boolean> {
+  const org = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { ownerId: true },
+  });
+  if (!org) return false;
+  if (org.ownerId === userId) return true;
+
+  const member = await getOrganizationMembership(userId, organizationId);
+  if (member) return true;
+
+  const projectMember = await prisma.projectMember.findFirst({
+    where: { userId, project: { organizationId } },
+    select: { id: true },
+  });
+  return !!projectMember;
+}
+
 export async function getAccessibleProjectIds(
   userId: string,
   organizationId: string

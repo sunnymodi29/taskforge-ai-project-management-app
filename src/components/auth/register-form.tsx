@@ -24,7 +24,12 @@ export function RegisterForm() {
     setLoading(true);
     setError("");
 
-    const result = await registerUser({ name, email, password });
+    const result = await registerUser({
+      name,
+      email,
+      password,
+      inviteToken: inviteToken ?? undefined,
+    });
     if ("error" in result && result.error) {
       setError(result.error);
       setLoading(false);

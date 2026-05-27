@@ -55,6 +55,40 @@ export default async function InvitePage({
     invitation.organizationRole?.replace("_", " ") ??
     "member";
 
+  const sessionEmail = session?.user?.email?.toLowerCase();
+  const inviteEmail = invitation.email.toLowerCase();
+  const emailMismatch =
+    !!session?.user && !!sessionEmail && sessionEmail !== inviteEmail;
+
+  if (emailMismatch) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+        <div className="max-w-md w-full rounded-xl border border-border bg-card p-8 space-y-6 text-center">
+          <h1 className="text-xl font-bold">Wrong account</h1>
+          <p className="text-sm text-muted-foreground">
+            You are signed in as <strong>{session.user?.email}</strong>, but this
+            invitation was sent to <strong>{invitation.email}</strong>.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Sign out and sign in with the invited email to accept.
+          </p>
+          <div className="flex flex-col gap-2">
+            <Link href={`/login?callbackUrl=/invite/${token}`} className="block">
+              <Button variant="outline" className="w-full">
+                Sign in with {invitation.email}
+              </Button>
+            </Link>
+            <Link href="/dashboard" className="block">
+              <Button variant="ghost" className="w-full">
+                Go to dashboard
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!session?.user) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-background">

@@ -4,13 +4,14 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { provisionOrganizationForUser } from "@/lib/organizations/setup";
-import { ACTIVE_PROJECT_COOKIE } from "@/lib/org/cookies";
+import { ACTIVE_ORG_COOKIE, ACTIVE_PROJECT_COOKIE } from "@/lib/org/cookies";
 import { z } from "zod";
 
 const registerSchema = z.object({
   name: z.string().min(2).max(80),
   email: z.string().email(),
   password: z.string().min(8).max(128),
+  inviteToken: z.string().min(1).optional(),
 });
 
 export async function registerUser(input: z.infer<typeof registerSchema>) {
@@ -33,13 +34,35 @@ export async function registerUser(input: z.infer<typeof registerSchema>) {
     },
   });
 
-  const { organizationSlug } = await provisionOrganizationForUser(
-    user.id,
-    data.name
+  let organizationSlug: string | undefined;
+  const skipPersonalOrg = await shouldSkipPersonalOrgOnRegister(
+    email,
+    data.inviteToken,
   );
+
+  if (!skipPersonalOrg) {
+    const provisioned = await provisionOrganizationForUser(user.id, data.name);
+    organizationSlug = provisioned.organizationSlug;
+  }
 
   const cookieStore = await cookies();
   cookieStore.delete(ACTIVE_PROJECT_COOKIE);
+  cookieStore.delete(ACTIVE_ORG_COOKIE);
 
   return { success: true, userId: user.id, organizationSlug };
+}
+
+async function shouldSkipPersonalOrgOnRegister(
+  email: string,
+  inviteToken?: string,
+): Promise<boolean> {
+  if (!inviteToken) return false;
+
+  const invitation = await prisma.invitation.findUnique({
+    where: { token: inviteToken },
+  });
+  if (!invitation) return false;
+  if (invitation.status !== "pending") return false;
+  if (invitation.expiresAt < new Date()) return false;
+  return invitation.email.toLowerCase() === email;
 }

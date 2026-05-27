@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
 import { acceptInvitation } from "@/lib/actions/invitations";
-import { setActiveProject } from "@/lib/actions/org";
 
 export function AcceptInviteButton({ token }: { token: string }) {
   const router = useRouter();
@@ -17,9 +16,10 @@ export function AcceptInviteButton({ token }: { token: string }) {
     try {
       const { projectKey } = await acceptInvitation(token);
       if (projectKey) {
-        await setActiveProject(projectKey);
+        router.push(`/dashboard/projects/${projectKey}`);
+      } else {
+        router.push("/dashboard");
       }
-      router.push("/dashboard");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to accept invitation");

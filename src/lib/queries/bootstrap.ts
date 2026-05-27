@@ -5,6 +5,7 @@ import {
   canCreateProject,
   getAccessibleProjectIds,
   isOrgOwner,
+  userHasOrganizationAccess,
 } from "@/lib/auth/rbac";
 import { cacheGet, cacheSet } from "@/lib/redis";
 import {
@@ -21,7 +22,7 @@ import {
   serializeAIConversation,
 } from "@/lib/serializers";
 import { getIssues, issueInclude } from "@/lib/queries/issues";
-import { ACTIVE_PROJECT_COOKIE } from "@/lib/org/cookies";
+import { ACTIVE_ORG_COOKIE, ACTIVE_PROJECT_COOKIE } from "@/lib/org/cookies";
 import type {
   User,
   Organization,
@@ -57,6 +58,20 @@ export interface BootstrapData {
 }
 
 async function resolveOrganizationForUser(userId: string) {
+  const invitedMembership = await prisma.organizationMember.findFirst({
+    where: { userId, organization: { ownerId: { not: userId } } },
+    include: { organization: true },
+    orderBy: { createdAt: "desc" },
+  });
+  if (invitedMembership) return invitedMembership.organization;
+
+  const projectOnly = await prisma.projectMember.findFirst({
+    where: { userId, project: { organization: { ownerId: { not: userId } } } },
+    include: { project: { include: { organization: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  if (projectOnly) return projectOnly.project.organization;
+
   const owned = await prisma.organization.findFirst({
     where: { ownerId: userId },
     orderBy: { createdAt: "asc" },
@@ -79,9 +94,17 @@ export async function getBootstrapData(
   const resolvedUserId = userId ?? session?.user?.id;
   if (!resolvedUserId) throw new Error("Unauthorized");
 
-  let org = organizationSlug
-    ? await prisma.organization.findUnique({ where: { slug: organizationSlug } })
+  const cookieStore = await cookies();
+  const orgSlugFromCookie = cookieStore.get(ACTIVE_ORG_COOKIE)?.value;
+  const effectiveOrgSlug = organizationSlug ?? orgSlugFromCookie ?? null;
+
+  let org = effectiveOrgSlug
+    ? await prisma.organization.findUnique({ where: { slug: effectiveOrgSlug } })
     : null;
+
+  if (org && !(await userHasOrganizationAccess(resolvedUserId, org.id))) {
+    org = null;
+  }
 
   if (!org) {
     org = await resolveOrganizationForUser(resolvedUserId);
@@ -109,7 +132,8 @@ export async function getBootstrapData(
     include: { user: true },
   });
 
-  if (!orgMember && org.ownerId !== resolvedUserId) {
+  const hasOrgAccess = await userHasOrganizationAccess(resolvedUserId, org.id);
+  if (!hasOrgAccess) {
     throw new Error("FORBIDDEN: Not a member of this organization");
   }
 
@@ -129,7 +153,6 @@ export async function getBootstrapData(
         ).map((p) => p.id)
       : accessible;
 
-  const cookieStore = await cookies();
   const projectKeyCookie = cookieStore.get(ACTIVE_PROJECT_COOKIE)?.value;
   let activeProject = projectKeyCookie
     ? await prisma.project.findFirst({
@@ -240,7 +263,7 @@ export async function getBootstrapData(
   const isOrgProjectAdmin = orgMember?.role === "project_admin";
   const permissions: UserPermissions = {
     isOrgOwner: owner,
-    isOrgProjectAdmin: isOrgProjectAdmin || owner,
+    isOrgProjectAdmin: isOrgProjectAdmin,
     canCreateProject: canCreateProject(resolvedUserId, org, orgMember),
     canInviteOrgProjectAdmin: owner,
   };

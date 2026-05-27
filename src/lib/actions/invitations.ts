@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
@@ -17,6 +18,12 @@ import {
   sendBrevoEmailOrThrow,
 } from "@/lib/email/brevo";
 import { notifyInvitationReceived } from "@/lib/notifications/service";
+import {
+  ACTIVE_ORG_COOKIE,
+  ACTIVE_PROJECT_COOKIE,
+  orgCookieOptions,
+  projectCookieOptions,
+} from "@/lib/org/cookies";
 import type { Invitation, ProjectRole } from "@/types";
 
 const INVITE_TTL_DAYS = 7;
@@ -504,20 +511,22 @@ export async function acceptInvitation(token: string): Promise<{
         update: { role: invitation.projectRole },
       });
 
-      await tx.organizationMember.upsert({
-        where: {
-          userId_organizationId: {
+      if (invitation.projectRole === "project_admin") {
+        await tx.organizationMember.upsert({
+          where: {
+            userId_organizationId: {
+              userId: session.user!.id!,
+              organizationId: project.organizationId,
+            },
+          },
+          create: {
             userId: session.user!.id!,
             organizationId: project.organizationId,
+            role: "project_admin",
           },
-        },
-        create: {
-          userId: session.user!.id!,
-          organizationId: project.organizationId,
-          role: "project_admin",
-        },
-        update: {},
-      });
+          update: { role: "project_admin" },
+        });
+      }
 
       organizationSlug = project.organization.slug;
       projectKey = project.key;
@@ -528,6 +537,12 @@ export async function acceptInvitation(token: string): Promise<{
       data: { status: "accepted" },
     });
   });
+
+  const cookieStore = await cookies();
+  cookieStore.set(ACTIVE_ORG_COOKIE, organizationSlug, orgCookieOptions());
+  if (projectKey) {
+    cookieStore.set(ACTIVE_PROJECT_COOKIE, projectKey, projectCookieOptions());
+  }
 
   await invalidateBootstrapForUser(session.user.id, organizationSlug);
   if (invitation.invitedById !== session.user.id) {
