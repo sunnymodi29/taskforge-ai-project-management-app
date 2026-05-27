@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { resolveSessionEmail } from "@/lib/auth/session-email";
 import { getInvitationByToken } from "@/lib/actions/invitations";
 import { Button } from "@/components/ui";
 import { AcceptInviteButton } from "@/components/accept-invite-button";
+import { InviteSwitchAccountButton } from "@/components/invite-switch-account-button";
 
 export const dynamic = "force-dynamic";
 
@@ -57,10 +59,12 @@ export default async function InvitePage({
     invitation.organizationRole?.replace("_", " ") ??
     "member";
 
-  const sessionEmail = session?.user?.email?.toLowerCase();
-  const inviteEmail = invitation.email.toLowerCase();
+  const inviteEmail = invitation.email.trim().toLowerCase();
+  const sessionEmail = await resolveSessionEmail(session);
   const emailMismatch =
-    !!session?.user && !!sessionEmail && sessionEmail !== inviteEmail;
+    !!session?.user?.id &&
+    !!sessionEmail &&
+    sessionEmail !== inviteEmail;
 
   if (emailMismatch) {
     return (
@@ -75,14 +79,17 @@ export default async function InvitePage({
             Sign out and sign in with the invited email to accept.
           </p>
           <div className="flex flex-col gap-2">
-            <Link href={`/login?callbackUrl=/invite/${token}`} className="block">
-              <Button variant="outline" className="w-full">
-                Sign in with {invitation.email}
-              </Button>
-            </Link>
-            <Link href="/dashboard" className="block">
+            <InviteSwitchAccountButton
+              inviteEmail={inviteEmail}
+              token={token}
+              className="w-full"
+            />
+            <Link
+              href={`/login?email=${encodeURIComponent(inviteEmail)}&callbackUrl=${encodeURIComponent(`/invite/${token}`)}`}
+              className="block"
+            >
               <Button variant="ghost" className="w-full">
-                Go to dashboard
+                Sign in with invited email
               </Button>
             </Link>
           </div>
@@ -140,7 +147,7 @@ export default async function InvitePage({
         <p className="text-sm text-muted-foreground">
           Accept access{projectName ? ` to ${projectName}` : ""} ({orgName}) as {roleLabel}.
         </p>
-        <AcceptInviteButton token={token} />
+        <AcceptInviteButton token={token} inviteEmail={inviteEmail} />
       </div>
     </div>
   );

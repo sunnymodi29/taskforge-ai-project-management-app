@@ -2,7 +2,10 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui";
+import { clearWorkspaceCookies } from "@/lib/actions/org";
 import {
   acceptInvitationAction,
   type AcceptInviteState,
@@ -17,18 +20,56 @@ function SubmitButton() {
   );
 }
 
-export function AcceptInviteButton({ token }: { token: string }) {
+export function AcceptInviteButton({
+  token,
+  inviteEmail,
+}: {
+  token: string;
+  inviteEmail: string;
+}) {
   const [state, formAction] = useActionState<AcceptInviteState, FormData>(
     acceptInvitationAction.bind(null, token),
     null,
   );
 
+  const emailMismatchError =
+    state?.error?.toLowerCase().includes("invited email") ?? false;
+
+  const handleSwitchAccount = async () => {
+    await clearWorkspaceCookies();
+    await signOut({
+      callbackUrl: `/login?email=${encodeURIComponent(inviteEmail)}&callbackUrl=${encodeURIComponent(`/invite/${token}`)}`,
+    });
+  };
+
   return (
     <form action={formAction} className="space-y-2">
       {state?.error && (
-        <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">
-          {state.error}
-        </p>
+        <div className="space-y-2">
+          <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">
+            {state.error}
+          </p>
+          {emailMismatchError && (
+            <div className="flex flex-col gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => void handleSwitchAccount()}
+              >
+                Sign out and use {inviteEmail}
+              </Button>
+              <Link
+                href={`/login?email=${encodeURIComponent(inviteEmail)}&callbackUrl=${encodeURIComponent(`/invite/${token}`)}`}
+                className="block"
+              >
+                <Button variant="ghost" className="w-full">
+                  Sign in with invited email
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
       )}
       <SubmitButton />
     </form>
