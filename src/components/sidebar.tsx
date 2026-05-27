@@ -8,7 +8,7 @@ import { projectPath } from "@/lib/projects/route";
 import { useAppStore } from "@/store/app-store";
 import { useDataStore } from "@/store/data-store";
 import { Avatar, Skeleton, Tooltip } from "@/components/ui";
-import { setActiveProject } from "@/lib/actions/org";
+import { clearWorkspaceCookies, setActiveProject } from "@/lib/actions/org";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/types";
 import {
@@ -88,6 +88,11 @@ export function Sidebar() {
       project.name.toLowerCase().includes(projectSearch.toLowerCase()) ||
       project.key.toLowerCase().includes(projectSearch.toLowerCase()),
   );
+
+  const handleSignOut = useCallback(async () => {
+    await clearWorkspaceCookies();
+    await signOut({ callbackUrl: "/login" });
+  }, []);
 
   const switchProject = useCallback(
     (project: Project) => {
@@ -258,7 +263,7 @@ export function Sidebar() {
             <Tooltip content="Sign out" side="right">
               <button
                 type="button"
-                onClick={() => void signOut({ callbackUrl: "/login" })}
+                onClick={() => void handleSignOut()}
                 aria-label="Sign out"
                 className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               >
@@ -302,7 +307,7 @@ export function Sidebar() {
               <Tooltip content="Sign out" side="top">
                 <button
                   type="button"
-                  onClick={() => void signOut({ callbackUrl: "/login" })}
+                  onClick={() => void handleSignOut()}
                   aria-label="Sign out"
                   className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                 >

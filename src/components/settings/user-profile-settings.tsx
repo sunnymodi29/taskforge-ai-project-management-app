@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import { useDataStore } from "@/store/data-store";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { clearWorkspaceCookies } from "@/lib/actions/org";
 import {
   updateUserProfile,
   changePassword,
@@ -152,6 +153,7 @@ export function UserProfileSettings() {
         password: deletePassword || undefined,
       });
       setDeleteDialogOpen(false);
+      await clearWorkspaceCookies();
       await signOut({ callbackUrl: "/login" });
     } catch (e) {
       setDeleteError(

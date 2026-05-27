@@ -57,21 +57,11 @@ export interface BootstrapData {
   aiConversations: AIConversation[];
 }
 
+/**
+ * Default org when no active-org cookie is set.
+ * Owners always land on their own org first; invite-only users use membership/project access.
+ */
 async function resolveOrganizationForUser(userId: string) {
-  const invitedMembership = await prisma.organizationMember.findFirst({
-    where: { userId, organization: { ownerId: { not: userId } } },
-    include: { organization: true },
-    orderBy: { createdAt: "desc" },
-  });
-  if (invitedMembership) return invitedMembership.organization;
-
-  const projectOnly = await prisma.projectMember.findFirst({
-    where: { userId, project: { organization: { ownerId: { not: userId } } } },
-    include: { project: { include: { organization: true } } },
-    orderBy: { createdAt: "desc" },
-  });
-  if (projectOnly) return projectOnly.project.organization;
-
   const owned = await prisma.organization.findFirst({
     where: { ownerId: userId },
     orderBy: { createdAt: "asc" },
@@ -81,9 +71,16 @@ async function resolveOrganizationForUser(userId: string) {
   const membership = await prisma.organizationMember.findFirst({
     where: { userId },
     include: { organization: true },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
   });
-  return membership?.organization ?? null;
+  if (membership) return membership.organization;
+
+  const projectOnly = await prisma.projectMember.findFirst({
+    where: { userId },
+    include: { project: { include: { organization: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  return projectOnly?.project.organization ?? null;
 }
 
 export async function getBootstrapData(
@@ -103,6 +100,10 @@ export async function getBootstrapData(
     : null;
 
   if (org && !(await userHasOrganizationAccess(resolvedUserId, org.id))) {
+    if (orgSlugFromCookie) {
+      cookieStore.delete(ACTIVE_ORG_COOKIE);
+      cookieStore.delete(ACTIVE_PROJECT_COOKIE);
+    }
     org = null;
   }
 

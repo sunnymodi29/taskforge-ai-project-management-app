@@ -13,6 +13,13 @@ import {
   projectCookieOptions,
 } from "@/lib/org/cookies";
 
+/** Clears active org/project cookies (e.g. on sign-out so the next session resolves cleanly). */
+export async function clearWorkspaceCookies(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete(ACTIVE_ORG_COOKIE);
+  cookieStore.delete(ACTIVE_PROJECT_COOKIE);
+}
+
 export async function setActiveOrganization(
   organizationSlug: string,
   options?: { revalidate?: boolean },
